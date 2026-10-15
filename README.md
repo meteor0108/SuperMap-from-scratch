@@ -218,7 +218,18 @@ Run one sequence:
 .venv/bin/python -m supermap.run --config configs/default.yaml --subset configs/subset_replica_office0.yaml --out outputs/office0
 ```
 
-The subset file selects the dataset, scene and frame range (`configs/subset_replica_office0.yaml`: Replica office0, 50 frames).
+The subset file selects the dataset, scene and frame range (`configs/subset_replica_office0.yaml`: Replica office0, 50 frames). \
+That 50-frame subset is a smoke test that checks the pipeline runs end to end (about 10 s of video, 9 instances). \
+To run a whole scene use `experiments/configs/full_office0_subset.yaml` (office0, 2000 frames). \
+For another Replica scene change its `scene:`; for ScanNet copy `experiments/configs/scannet_subset_template.yaml` and fill in the scene name.
+
+```bash
+.venv/bin/python -m supermap.run --config configs/default.yaml \
+  --subset experiments/configs/full_office0_subset.yaml --out outputs/office0_full
+```
+
+Runtime (RTX PRO 6000, default config): about 2 min for one 2000-frame Replica scene, 0.5-4 min for one ScanNet scene (stride 3, 300-1500 frames). \
+The first run adds a few seconds of model loading.
 
 The output folder contains:
 
@@ -229,6 +240,17 @@ The output folder contains:
 | `graph.json` | the 4D scene graph (nodes, spatial and temporal edges) |
 | `serialized.txt` | the text serialization sent to the VLM |
 | `run_summary.json` | frame counts, instance counts, module run counts, absorb / removal statistics, VLM status |
+
+### 3D visualization
+
+Turn an output folder into a single HTML file you can explore in a browser:
+
+```bash
+.venv/bin/python scripts/visualize.py outputs/office0   # -> outputs/office0/viz.html
+```
+
+It shows the dense map, per-instance points, boxes and labels, spatial (on/beside/under) and temporal edges, VLM waypoints, and the camera trajectory; each can be toggled in the legend. \
+The file is self-contained and opens in any browser. The trajectory needs the subset file (`--subset`; defaults to `subset.yaml` in the output folder, else `configs/subset_replica_office0.yaml`).
 
 `configs/default.yaml` holds every parameter with a comment per key. \
 How each default was chosen is explained in [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).

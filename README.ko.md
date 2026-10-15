@@ -221,7 +221,18 @@ uv pip install --python .venv/bin/python -r requirements.txt
 .venv/bin/python -m supermap.run --config configs/default.yaml --subset configs/subset_replica_office0.yaml --out outputs/office0
 ```
 
-subset 파일은 데이터셋, 장면, 프레임 범위를 고른다(`configs/subset_replica_office0.yaml`: Replica office0, 50 프레임).
+subset 파일은 데이터셋, 장면, 프레임 범위를 고른다(`configs/subset_replica_office0.yaml`: Replica office0, 50 프레임). \
+이 50 프레임 subset은 파이프라인이 끝까지 도는지 보는 스모크 테스트용이다(약 10초 분량, 인스턴스 9개). \
+장면 전체를 돌리려면 `experiments/configs/full_office0_subset.yaml`(office0, 2000 프레임)을 쓴다. \
+다른 Replica 장면은 그 파일의 `scene:`만 바꾸고, ScanNet은 `experiments/configs/scannet_subset_template.yaml`을 복사해 장면 이름을 넣는다.
+
+```bash
+.venv/bin/python -m supermap.run --config configs/default.yaml \
+  --subset experiments/configs/full_office0_subset.yaml --out outputs/office0_full
+```
+
+실행 시간(RTX PRO 6000, 기본 설정): Replica 장면 하나 2000 프레임에 약 2분, ScanNet 장면 하나(stride 3, 300~1500 프레임)에 0.5~4분. \
+첫 실행에는 모델 로딩이 몇 초 더 걸린다.
 
 출력 폴더의 내용:
 
@@ -232,6 +243,17 @@ subset 파일은 데이터셋, 장면, 프레임 범위를 고른다(`configs/su
 | `graph.json` | 4D scene graph (노드, 공간/시간 엣지) |
 | `serialized.txt` | VLM에 보내는 텍스트 직렬화 |
 | `run_summary.json` | 프레임 수, 인스턴스 수, 모듈 실행 횟수, 흡수/제거 통계, VLM 상태 |
+
+### 3D 시각화
+
+출력 폴더를 브라우저에서 돌려 볼 수 있는 단일 HTML로 만든다:
+
+```bash
+.venv/bin/python scripts/visualize.py outputs/office0   # -> outputs/office0/viz.html
+```
+
+dense map, 인스턴스별 점/박스/라벨, 공간 엣지(on/beside/under)와 시간 엣지, VLM 웨이포인트, 카메라 궤적을 보여 주며 범례에서 각각 켜고 끌 수 있다. \
+파일 하나로 완결되어 어떤 브라우저에서도 열린다. 카메라 궤적에는 subset 파일이 필요하다(`--subset`, 기본값은 출력 폴더의 `subset.yaml`, 없으면 `configs/subset_replica_office0.yaml`).
 
 `configs/default.yaml`에 모든 파라미터가 키마다 주석과 함께 들어 있다. \
 각 기본값이 어떤 실험으로 정해졌는지는 [docs/IMPLEMENTATION.ko.md](docs/IMPLEMENTATION.ko.md)에 있다.

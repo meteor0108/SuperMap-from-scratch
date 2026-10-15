@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -110,6 +111,7 @@ def run(config: str | Path, subset: str | Path, out: str | Path) -> dict:
     seq = build_sequence(ds_cfg, sub, base_dir=REPO_ROOT)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(subset, out / "subset.yaml")  # REQ-062: keep the subset used by this run next to its outputs
     pipe = SuperMapPipeline(cfg, pose_provider=seq.pose_provider, T_BC=seq.T_BC)
     print(f"dataset={name} scene={ds_cfg['scene']} frames={len(seq)} rates={pipe.scheduler.rates}", flush=True)
 
