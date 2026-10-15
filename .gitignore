@@ -1,0 +1,13 @@
+# data, weights and run outputs
+data/
+weights/
+outputs/
+experiments/
+# environment and secrets
+.env
+.venv/
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/

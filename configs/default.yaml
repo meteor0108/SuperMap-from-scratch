@@ -1,0 +1,191 @@
+# SuperMap default configuration. Each value cites its REQ and source.
+
+extrinsics:
+  # REQ-003 / REQ-009: fixed body-to-camera extrinsic T_BC in Eq. (3), p.4 Sec. IV-A.
+  # Dataset poses are camera poses, so T_WB := dataset pose and T_BC := I_4 (D-009).
+  T_BC:
+    - [1.0, 0.0, 0.0, 0.0]
+    - [0.0, 1.0, 0.0, 0.0]
+    - [0.0, 0.0, 1.0, 0.0]
+    - [0.0, 0.0, 0.0, 1.0]
+
+camera:
+  # REQ-004: OpenCV axes, no distortion, round-to-nearest pixel index (D-010; paper silent).
+  convention: opencv
+
+datasets:
+  replica:
+    # REQ-006: development substitute (D-002). Intrinsics/depth scale come from cam_params.json.
+    root: data/replica
+    scene: office0
+    nominal_fps: 10.0   # D-006: Replica has no timestamps; nominal 0.1 s frame spacing
+  scannet:
+    # REQ-007: ScanNet SensReader export layout.
+    root: data/scannet
+    scene: scene0000_00
+    depth_scale: 1000.0  # D-013: ScanNet depth PNG is uint16 millimeters (dataset convention)
+    nominal_fps: 30.0    # D-013: ScanNet capture rate; exports carry no timestamps
+  # REQ-008: real_robot is not available (D-014).
+
+geometry:
+  # REQ-010: valid depth range for back-projection, p.4 Sec. IV-A (paper silent, D-015).
+  depth_min: 0.0     # exclusive lower bound, meters (matches D-012: depth > 0)
+  depth_max: null    # no upper bound
+  dense_map:
+    # REQ-011: colorized dense 3D map, p.4 Sec. IV-A / Fig. 2 (voxel size not stated, D-016).
+    voxel_size: 0.02 # meters; one point per voxel (first inserted kept); null disables downsampling
+
+perception:
+  # REQ-013: predefined object prompt list (Sec. VII Limitation, p.8-9); defines label set c (REQ-040).
+  # Paper list not published; office list per DATASETS.md sec. 4 (D-025).
+  prompts: [chair, table, sofa, plant, lamp, monitor, trash can]
+  prompt_aliases: {}  # REQ-013: extra detector phrases per class, labelled as that class (D-115 candidate); {} = none
+  detector:
+    # REQ-012: GroundingDINO [12] (Sec. IV-B p.4, Sec. V-B b) p.6); checkpoint D-004.
+    model_id: IDEA-Research/grounding-dino-base   # D-114 (was tiny, D-004): +7.7 mIoU on 40 ScanNet scenes, fits the paper's 16 GB laptop GPU
+    box_threshold: 0.1    # REQ-012, REQ-020: paper silent; = ByteTrack low_thresh so D_low is reachable (D-097; demo 0.35 of D-020 is the tracker high cut)
+    nms_iou: 0.5    # REQ-012: class-agnostic NMS on the confident boxes, IoU >= this suppresses the lower-score box; D-116 default 0.5; 0 = off
+    device: auto          # cuda if available
+    local_files_only: true  # D-007: weights already in the HF cache
+  segmenter:
+    # REQ-014: SAM2 [21] box prompts on tracked boxes (Sec. V-B b) p.6, Supp. Alg. 1 line 19); checkpoint D-005.
+    model_id: facebook/sam2.1-hiera-small
+    multimask_output: false  # REQ-014: one mask per box (D-023)
+    mask_threshold: 0.0      # REQ-014: logit threshold, SAM2 default (D-023)
+    device: auto
+    local_files_only: true
+
+semantics:
+  # REQ-040..REQ-045: Bayesian semantic fusion, Eq. (10), p.5 Sec. IV-B4.
+  confusion:
+    # REQ-042: detector confusion matrix P(z_t | L_j = c) (p.5 Sec. IV-B4); values not given in paper (D-061).
+    diag_prob: 0.8   # p_c on the diagonal; off-diagonal (1 - p_c) / (C - 1)
+    matrix: null     # optional explicit C x C row-stochastic matrix (rows = true c, cols = observed z)
+  # REQ-044: remove instances whose posterior belief max_c P(L_j = c) < p_min (p.5 Sec. IV-B4); value not given (D-063).
+  p_min: 0.4
+
+consistency:
+  # REQ-029..REQ-036: probabilistic geometric consistency update, p.4-5 Sec. IV-B3, Eq. (7)-(9);
+  # Supp. Alg. 1 lines 7-9, 21-27. The paper gives no numeric values (D-045..D-052).
+  sigma: 0.05      # REQ-030: Gaussian depth noise std (m), p(Dd) ~ N(0, sigma^2); likelihood only, not used by Eq. 9 (D-049)
+  tau_eps: 0.1     # REQ-031: Eq. (9) threshold tau_epsilon (m) (D-049)
+  p_obs: 0.7       # REQ-034: P(o_k|Q_t) for Observable (D-049)
+  p_dis: 0.3       # REQ-034: P(o_k|Q_t) for Disappeared; also ObjNegate evidence, REQ-036 (D-049, D-050)
+  p_unobs: 0.5     # REQ-034: P(o_k|Q_t) for Unobservable = no information (D-049)
+  L_prune: -1.0    # REQ-035: points with log-odds < L_prune are removed (D-049)
+  L_init: null     # REQ-033: initial log-odds of new points; null -> logit(p_obs) (D-048)
+  L_clamp: null    # REQ-033: symmetric log-odds clamp; null -> none (D-048)
+  exist_clamp: 3.0   # REQ-035: symmetric clamp of the object existence log-odds (D-113)
+  exist_prune: -1.0  # REQ-035: object REMOVED when its existence log-odds < this (= L_prune); null disables (D-113)
+  exist_semantic: true   # REQ-036: semantic inconsistency (visible, untracked) also lowers L_exist (D-113); false = geometric evidence only
+  verdict_window_px: 0   # REQ-032: object-level verdict tolerates depth consistent within a (2r+1)^2 pixel window; 0 = off (I-9-4 mitigation, no decision recorded)
+  exist_min_points: 0    # REQ-035: min in-view points for an L_exist update; 0 = off (I-9-4 mitigation, no decision recorded)
+  exist_min_share: 0.0   # REQ-035: min in-view share of points for an L_exist update; 0 = off (I-9-4 mitigation, no decision recorded)
+  # REQ-032: object-level state = majority of in-view point states, ties Observable > Unobservable > Disappeared (D-047)
+  # REQ-036/037: one Eq. (8) update per point per frame; O_neg objects get ObjNegate instead of the per-state update (D-051)
+
+tracking:
+  # REQ-022 / REQ-025: 3D-to-2D motion compensation (Sec. IV-B2, Eq. 5-6). false = 2D-only control.
+  motion_compensation: true
+  # REQ-026: re-activate expired tracks from O_on objects (paper silent on mechanism, D-035)
+  reactivation: true
+  kalman:
+    # REQ-016: state S_i in R^6 (Eq. 4); 8 adds scale velocity (D-030)
+    state_dim: 6
+    # REQ-019: F = ByteTrack constant-velocity model, dt in frames (Eq. 6, Supp. VIII-B; D-031)
+    dt: 1.0
+    # REQ-019: diagonal Q variances (px^2); ByteTrack weights 1/20, 1/160 at 100 px height (D-031)
+    q_centroid: 25.0
+    q_size: 25.0
+    q_velocity: 0.390625
+    q_size_velocity: 0.390625
+    # REQ-018: measurement noise R for z = [x, y, w, h] (px^2), ByteTrack 1/20 at 100 px (D-031)
+    r_centroid: 25.0
+    r_size: 25.0
+    # REQ-018: initial covariance, ByteTrack initiate() at 100 px height (D-031)
+    p0_centroid: 100.0
+    p0_size: 100.0
+    p0_velocity: 39.0625
+    p0_size_velocity: 39.0625
+  bytetrack:
+    # REQ-020: ByteTrack [33] defaults (Supp. VIII-B builds on ByteTrack Alg. 1; D-033)
+    high_thresh: 0.35         # D_high: score > high_thresh; GroundingDINO demo confident cut (D-020, D-097; ByteTrack default 0.5)
+    low_thresh: 0.1           # D_low: low_thresh < score <= high_thresh; = detector box_threshold (D-097)
+    new_track_thresh: 0.35    # epsilon: new track if unmatched D_high score >= this; = high_thresh (D-097; ByteTrack default 0.6)
+    match_thresh: 0.8         # first association: accept 1 - IoU <= 0.8
+    second_match_thresh: 0.5  # second association: accept 1 - IoU <= 0.5
+    track_buffer: 30          # removed when frames since last match > track_buffer (D-034)
+    label_cost: 1.0           # REQ-020: added to 1 - IoU in the first association when track and detection labels differ; cost above match_thresh = hard class gate (1.0 > 0.8); D-117 default 1.0 (D-108 had 0.0 = class-agnostic)
+    footprint_boxes: false   # REQ-026: re-activation candidate box = pixel footprint of the projected points instead of the 3D AABB corners (I-11-3 candidate)
+    map_match_iou: 0.0      # REQ-022/026: leftover D_high detections take the id of the O_on object whose footprint IoU >= this; 0 = off (I-11-3 candidate)
+    gate_3d: 0.0    # REQ-022: reject a track/detection pair whose 3D centroids are farther apart than this (m); evaluated iter 15, not adopted (D-119); 0 = off
+  neighbors:
+    # REQ-021: GetNeighborObjects (Supp. Alg. 1 line 6): centroid in view and within max_range m (D-032)
+    max_range: 10.0
+    mode: points           # REQ-021: points = any sampled point in view within max_range (D-110); centroid = D-032
+    sample_points: 256     # REQ-021: evenly strided points per object projected in mode points (D-110)
+  unproject:
+    # REQ-023: Unproject (Supp. Alg. 1 line 20): mask erosion, depth outlier removal, overlap rule, min points per O_add (D-036, D-106, D-107)
+    min_points: 1
+    erode_px: 2            # REQ-023: binary erosion of each SAM2 mask (pixels) before lifting (D-106; D-036 had none)
+    erode_min_keep: 0.5    # REQ-023: keep the un-eroded mask if erosion would drop more than this fraction (D-106)
+    depth_outlier_k: 3.0   # REQ-023: drop mask pixels with |d - median| > k * sigma_MAD (D-106); null disables
+    depth_outlier_floor: 0.05  # REQ-023: lower bound of sigma_MAD in meters (D-106)
+    edge_jump: 0.1        # REQ-023: drop mask pixels whose depth jumps by more than this (m) within the (2r+1)^2 window; D-116 default 0.1; 0 = off
+    edge_rel: 0.0         # REQ-023: same, relative to the pixel depth (fraction); the larger of the two thresholds applies; 0 = off
+    edge_radius: 1        # REQ-023: window radius in pixels for the depth-edge test
+    resolve_overlaps: smaller  # REQ-014/REQ-023: pixel shared by several masks goes to the smaller mask (D-107); null disables
+    component_voxel: null  # REQ-023: per-observation largest-component filter grid (m); null = off (evaluated in iter 15, not adopted: D-118)
+  merge:
+    # REQ-024: ObjMerge/MapMerge point de-duplication voxel (m), = dense map voxel (D-016); null = plain concatenation (D-037, default 0.02 per D-101)
+    voxel_size: 0.02
+    component_voxel: 0.10  # REQ-024: instances that received points keep only their largest 26-connected voxel component at this grid (m); D-118 default 0.10; null = off
+    absorb_overlap: 0.5    # REQ-024: absorb a new-id O_add into the neighbor holding >= this fraction of its voxels (D-111); null disables
+    absorb_same_label: false    # REQ-024: D-111 absorb only into a same-argmax-label neighbor; evaluated iter 15, not adopted (D-119)
+    absorb_overlap_rev: null   # REQ-024: D-111 absorb also needs this fraction of the neighbor voxels covered; evaluated iter 15, not adopted (D-119)
+    contact_dist: 0.0          # REQ-024: absorb a new-id O_add into the neighbor when >= contact_frac of its points lie within this distance (m) of the neighbor's points; 0 = off (I-11-3 candidate)
+    contact_frac: 0.5          # REQ-024: fraction of the new points that must be in contact
+    contact_same_label: false  # REQ-024: require the new observation's label to equal the neighbor's label
+    contact_exclude: [wall, floor]   # REQ-024: class phrases that never absorb by contact
+
+scene_graph:
+  # REQ-046..REQ-056: topological layer G = (V, E_s, E_t), p.5 Sec. IV-C / IV-D a).
+  # Supplementary gives no construction details; all values below are paper-silent choices.
+  vertical_axis: 2        # REQ-048: world z is up (SPEC sec. 0, D-072)
+  d_clu: 3.0              # REQ-047: single-linkage centroid distance threshold, meters (D-070)
+  gamma: 0.05             # REQ-048: IoU_xy threshold gamma in On(A,B), p.5 Sec. IV-C (D-071)
+  gamma_per_class: {}     # REQ-048: optional class-dependent gamma keyed by support label B (D-071)
+  delta: 0.05             # REQ-048: tolerance for z^A_min ~= z^B_max, meters (D-071)
+  d_bes: 0.5              # REQ-049: max horizontal bbox gap for beside, meters (D-073)
+  d_move: 0.1             # REQ-050: min centroid displacement for a new temporal node, meters (D-074)
+  subgraph_radius: 5.0    # REQ-056: local subgraph radius around the query center, meters (D-079)
+
+vlm:
+  # REQ-057: pluggable VLM; paper uses Gemini 2.0 Flash, p.7 Sec. V-F (D-003, D-080).
+  backend: gemini
+  model: gemini-2.0-flash
+  temperature: 0.0        # REQ-057: paper silent; deterministic decoding (D-080)
+  api_key_env: [GEMINI_API_KEY, GOOGLE_API_KEY]
+  # REQ-057: flash-family models tried in order if gemini-2.0-flash is not served (404), D-099.
+  # D-100 (2026-09-30 probe): 2.0/2.5 flash return 404 for new users; flash-latest (3.8) hits the
+  # free-tier daily quota (429); flash-lite-latest answers, so it is tried first.
+  fallback_models: [gemini-flash-lite-latest, gemini-3.8-flash, gemini-flash-latest, gemini-2.5-flash]
+  # REQ-057/REQ-058: instruction appended after schema + graph + cues, p.5 Sec. IV-D b) (D-081).
+  instruction: >-
+    Answer the query using only the scene graph above.
+    Return the target instance IDs inside <answer></answer> tags,
+    for example <answer>3, 5</answer>.
+
+rates:
+  # REQ-061: asynchronous module rates in Hz, p.8 Sec. V-H and Supp. VII-D (paper values).
+  # Dataset replay uses a simulated timestamp schedule (D-086, D-087).
+  pose: 10.0          # pose estimation output, 10 Hz
+  segmentation: 1.0   # 2D instance segmentation (GroundingDINO + tracker + SAM2), 1 Hz
+  mapping: 3.0        # dense 3D mapping + 3D bounding box update, 3 Hz (Supp. VII-D)
+  scene_graph: 5.0    # 4D scene graph update, 5 Hz
+  tolerance: 1.0e-6   # REQ-061: slot boundary tolerance in seconds (SPEC REQ-061 verification)
+
+run:
+  # REQ-062: E2E run outputs; paper silent on the demo query (D-093).
+  vlm_query: "Where is the chair?"   # one grounding query when a Gemini key is available (D-003)
+  subgraph_center: camera            # REQ-056: local subgraph around the last camera position (D-079, D-093)

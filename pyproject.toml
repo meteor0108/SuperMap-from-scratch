@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "supermap"
+version = "0.0.1"
+description = "Paper-faithful implementation of SuperMap (RSS 2026)"
+requires-python = ">=3.11"
+dependencies = ["numpy", "opencv-python-headless", "pyyaml"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

@@ -1,0 +1,8 @@
+# Example subset: loader arguments only. Replica office0, frames 0..99 with stride 2 -> 50 frames.
+dataset: replica
+root: data/replica
+scene: office0
+start: 0
+max_frames: 50
+stride: 2
+nominal_fps: 10   # Replica has no timestamps; see D-006
