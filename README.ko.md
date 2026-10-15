@@ -256,9 +256,10 @@ dense map, 인스턴스별 점/박스/라벨, 공간 엣지(on/beside/under)와 
 파일 하나로 완결되어 어떤 브라우저에서도 열린다. 카메라 궤적에는 subset 파일이 필요하다(`--subset`, 기본값은 출력 폴더의 `subset.yaml`, 없으면 `configs/subset_replica_office0.yaml`). \
 `--png <path>`를 주면 정적 이미지도 저장한다(`uv pip install kaleido` 후 `.venv/bin/plotly_get_chrome` 필요).
 
-![office0 전체 2000 프레임 실행 결과](docs/images/office0_full_viz.png)
+![office0 전체 2000 프레임 실행 결과](docs/images/office0_full_orbit.gif)
 
-위 그림은 office0 2000 프레임 실행 결과(인스턴스 20개, 공간 엣지 33개, 시간 엣지 48개, 103초)로, 인스턴스 점과 박스, 프레임 순서로 색을 입힌 카메라 궤적, "Where is the chair?"에 대한 VLM 웨이포인트(노란 마름모)를 보여 준다.
+위 그림은 office0 2000 프레임 실행 결과(인스턴스 20개, 공간 엣지 33개, 시간 엣지 48개, 103초)로, 인스턴스 점과 박스, 프레임 순서로 색을 입힌 카메라 궤적, "Where is the chair?"에 대한 VLM 웨이포인트(노란 마름모)를 보여 준다. \
+범례가 있는 정지 이미지: [docs/images/office0_full_viz.png](docs/images/office0_full_viz.png).
 
 `configs/default.yaml`에 모든 파라미터가 키마다 주석과 함께 들어 있다. \
 각 기본값이 어떤 실험으로 정해졌는지는 [docs/IMPLEMENTATION.ko.md](docs/IMPLEMENTATION.ko.md)에 있다.
