@@ -157,7 +157,7 @@ def trajectory_traces(seq, pos: np.ndarray) -> list[go.Scatter3d]:
     path = go.Scatter3d(x=pos[:, 0], y=pos[:, 1], z=pos[:, 2], mode="lines+markers",
                         name="Camera trajectory", legendgroup="traj", line=dict(color="grey", width=2),
                         marker=dict(size=3, color=np.arange(len(pos)), colorscale="Viridis",
-                                    colorbar=dict(title="frame", len=0.5)),
+                                    colorbar=dict(title="frame", len=0.4, x=0.0, xanchor="left")),
                         hovertext=hover, hoverinfo="text")
     ends = [go.Scatter3d(x=[pos[i, 0]], y=[pos[i, 1]], z=[pos[i, 2]], mode="markers", name=n,
                          legendgroup="traj", marker=dict(size=7, color=c), hoverinfo="name")
@@ -218,6 +218,7 @@ def main() -> None:
     ap.add_argument("--max-dense-points", type=int, default=80000)
     ap.add_argument("--max-instance-points", type=int, default=4000)
     ap.add_argument("--no-trajectory", action="store_true")
+    ap.add_argument("--png", default=None, help="also save a static 1600x1000 image (needs kaleido + Chrome)")
     args = ap.parse_args()
     out_dir = Path(args.out_dir)
     out = Path(args.out) if args.out else out_dir / "viz.html"
@@ -226,6 +227,12 @@ def main() -> None:
     print(f"points drawn: dense={s['dense_pts']} instance={s['inst_pts']}")
     print(f"nodes={s['nodes']} spatial_edges={s['spatial']} temporal_edges={s['temporal']} trajectory_frames={s['frames']}")
     print(f"wrote {out}")
+    if args.png:
+        # fixed oblique view; the title and margins are dropped so the scene fills the image
+        fig.update_layout(width=1600, height=1000, title=None, margin=dict(l=0, r=0, t=0, b=0),
+                          scene_camera=dict(eye=dict(x=1.3, y=-1.3, z=0.9)))
+        fig.write_image(args.png)
+        print(f"wrote {args.png}")
 
 
 if __name__ == "__main__":

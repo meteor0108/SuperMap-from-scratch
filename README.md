@@ -250,7 +250,12 @@ Turn an output folder into a single HTML file you can explore in a browser:
 ```
 
 It shows the dense map, per-instance points, boxes and labels, spatial (on/beside/under) and temporal edges, VLM waypoints, and the camera trajectory; each can be toggled in the legend. \
-The file is self-contained and opens in any browser. The trajectory needs the subset file (`--subset`; defaults to `subset.yaml` in the output folder, else `configs/subset_replica_office0.yaml`).
+The file is self-contained and opens in any browser. The trajectory needs the subset file (`--subset`; defaults to `subset.yaml` in the output folder, else `configs/subset_replica_office0.yaml`). \
+`--png <path>` also saves a static image (needs `uv pip install kaleido` and `.venv/bin/plotly_get_chrome`).
+
+![office0 full 2000-frame run](docs/images/office0_full_viz.png)
+
+The image above is the full office0 run (2000 frames, 20 instances, 33 spatial and 48 temporal edges, 103 s): instance points and boxes, the camera trajectory colored by frame index, and the VLM waypoints (yellow diamonds) for "Where is the chair?".
 
 `configs/default.yaml` holds every parameter with a comment per key. \
 How each default was chosen is explained in [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
