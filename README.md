@@ -17,14 +17,14 @@ How it was built (implementation details, parameters, experiments and the reason
 1. [Algorithm](#algorithm)
 2. [Results vs. the paper](#results-vs-the-paper)
 3. [Differences from the paper](#differences-from-the-paper)
-4. [TODO](#todo)
-5. [Installation](#installation)
-6. [Usage](#usage)
-7. [Repository layout](#repository-layout)
-8. [Documentation](#documentation)
-9. [Citation](#citation)
-10. [Acknowledgements](#acknowledgements)
-11. [License](#license)
+4. [Installation](#installation)
+5. [Usage](#usage)
+6. [Repository layout](#repository-layout)
+7. [Documentation](#documentation)
+8. [Citation](#citation)
+9. [Acknowledgements](#acknowledgements)
+10. [License](#license)
+11. [TODO](#todo)
 
 ## Algorithm
 
@@ -102,19 +102,6 @@ The GPU is stronger than the paper's, so these latencies are optimistic.
 - **Details the paper leaves open** and this implementation fills in: class-agnostic NMS on detector boxes; depth-edge and depth-outlier filters and mask erosion before lifting; absorbing a new track whose points lie inside an existing instance; a class-aware first association; keeping the largest connected component of an instance after a merge; object-level existence log-odds with removal; and every numeric threshold (Eq. 8, 9, 10 probabilities, scene-graph gamma and delta, ByteTrack thresholds). \
   The measurements behind each choice are in [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
 - **Evaluation.** ScanNet and synthetic change sequences replace the paper's robot experiments; there is no real-robot or navigation stack.
-
-## TODO
-
-Where the implementation still falls short of the paper, and what was left out of scope. The numbers and diagnoses behind each item are in [docs/IMPLEMENTATION.md, section 9](docs/IMPLEMENTATION.md#9-known-limitations-and-open-issues).
-
-- [ ] **Instance over-segmentation and mixing.** 46 active instances per ScanNet scene vs 15 GT objects; on office0 two sofas end up as three instances and one table as two. \
-  The instance id is the 2D track id, so a lost track opens a new id, and re-activation (Eq. 5) and absorption (D-111) only work on sides already seen. Adjacent objects of the same class get mixed by a single detection box or an ID switch. There is no step that re-merges or splits instances in 3D.
-- [ ] **Background leaking into furniture labels.** On office0 a wall plus rug becomes "table" and the blinds become "door". Needs mask clean-up or explicit background handling.
-- [ ] **Lost desk class.** The class-agnostic NMS (D-116) suppresses the "desk" box behind the "table" box of the same object, so desk AP50 is 0 (I-14-2).
-- [ ] **Thin planar objects.** window AP50 27.7 (paper 42.2), refrigerator 26.0.
-- [ ] **Removal recall in change detection.** On narrow-FOV RGB-D revisits only 14 of 29 removed objects reach REMOVED, with a median of 354 frames.
-- [ ] **False removals in static scenes.** The object existence log-odds (D-113) deletes 17-24 small fragments per scene (I-9-4).
-- [ ] **SuperOdometry / LiDAR input.** Only dataset GT poses and RGB-D depth are used; a `PoseProvider` implementation would add it.
 
 ## Installation
 
@@ -293,3 +280,16 @@ No data or model weights are redistributed here; the download scripts fetch them
 
 The code and documentation in this repository are released under the [MIT License](LICENSE). \
 The SuperMap algorithm and paper belong to their authors; this license covers only this reimplementation.
+
+## TODO
+
+Where the implementation still falls short of the paper, and what was left out of scope. The numbers and diagnoses behind each item are in [docs/IMPLEMENTATION.md, section 9](docs/IMPLEMENTATION.md#9-known-limitations-and-open-issues).
+
+- [ ] **Instance over-segmentation and mixing.** 46 active instances per ScanNet scene vs 15 GT objects; on office0 two sofas end up as three instances and one table as two. \
+  The instance id is the 2D track id, so a lost track opens a new id, and re-activation (Eq. 5) and absorption (D-111) only work on sides already seen. Adjacent objects of the same class get mixed by a single detection box or an ID switch. There is no step that re-merges or splits instances in 3D.
+- [ ] **Background leaking into furniture labels.** On office0 a wall plus rug becomes "table" and the blinds become "door". Needs mask clean-up or explicit background handling.
+- [ ] **Lost desk class.** The class-agnostic NMS (D-116) suppresses the "desk" box behind the "table" box of the same object, so desk AP50 is 0 (I-14-2).
+- [ ] **Thin planar objects.** window AP50 27.7 (paper 42.2), refrigerator 26.0.
+- [ ] **Removal recall in change detection.** On narrow-FOV RGB-D revisits only 14 of 29 removed objects reach REMOVED, with a median of 354 frames.
+- [ ] **False removals in static scenes.** The object existence log-odds (D-113) deletes 17-24 small fragments per scene (I-9-4).
+- [ ] **SuperOdometry / LiDAR input.** Only dataset GT poses and RGB-D depth are used; a `PoseProvider` implementation would add it.
