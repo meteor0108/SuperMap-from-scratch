@@ -18,6 +18,13 @@ class ConsensusParams:
     background: tuple[int, ...] = ()    # class indices clustered by overlap instead of consensus
     bg_overlap: float = 0.3  # voxel-overlap fraction (of the smaller) linking two background segments
     voxel: float = 0.02      # voxel size for point de-duplication and overlap tests
+    fallback: str = "contact"      # tier after the theta schedule for undecided pairs: "none" | "contact"
+    fallback_contact: float = 0.5  # share of the smaller cluster's points within near_dist of the larger
+    min_cluster_points: int = 50   # clusters with fewer points are dropped from the result
+
+    def __post_init__(self) -> None:
+        if self.fallback not in ("none", "contact"):
+            raise ValueError("fallback must be 'none' or 'contact'")
 
     # tolerant constructor: unknown keys are ignored, lists become tuples
     @classmethod

@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from scipy.spatial import cKDTree
+
 from supermap.geometry.dense_map import voxel_keys
 from supermap.segments.consensus import PairEvidence, candidate_pairs, pair_evidence
 from supermap.segments.params import ConsensusParams
@@ -27,6 +29,8 @@ class ClusterResult:
     merges: int = 0
     rounds: int = 0
     pair_log: list[tuple[int, int, int, int, float]] = field(default_factory=list)  # (a, b, support, conflict, theta)
+    dropped: list[list[int]] = field(default_factory=list)  # clusters below min_cluster_points
+    fallback_merges: int = 0   # merges made by the contact fallback (theta -1.0 in pair_log)
 
 
 # REQ-024 (extension): background iff the argmax of the segment label vote is a background class
@@ -69,6 +73,18 @@ def _distrust_set(hist: dict[int, dict[int, FrameHist]], p: ConsensusParams) -> 
                     out.add(slot)
                     break
     return out
+
+
+# REQ-024 (extension): merge cluster b into a (a < b): members, histograms, adjacency
+def _merge_pair(a: int, b: int, members: dict, hist: dict, nbrs: dict) -> None:
+    members[a].extend(members.pop(b))
+    hist[a] = _merge_cluster_hists(hist[a], hist.pop(b))
+    nb = (nbrs[a] | nbrs[b]) - {a, b}
+    for n in nbrs.pop(b):
+        nbrs[n].discard(b)
+    nbrs[a] = nb
+    for n in nb:
+        nbrs[n].add(a)
 
 
 # REQ-024 (extension): theta-scheduled greedy merging with cluster-level evidence
@@ -114,21 +130,83 @@ def _cluster_foreground(store: SegmentStore, hists: dict[int, dict[int, FrameHis
                     continue
                 ev = evidence(a, b)
                 touched.update((a, b))
-                members[a].extend(members.pop(b))
-                hist[a] = _merge_cluster_hists(hist[a], hist.pop(b))
+                _merge_pair(a, b, members, hist, nbrs)
                 version[a] = next(counter)
-                nb = (nbrs[a] | nbrs[b]) - {a, b}
-                for n in nbrs.pop(b):
-                    nbrs[n].discard(b)
-                nbrs[a] = nb
-                for n in nb:
-                    nbrs[n].add(a)
                 log.append((a, b, ev.support, ev.conflict, float(theta)))
                 n_round += 1
             merges += n_round
             if n_round == 0:
                 break
-    return [sorted(m) for m in members.values()], hist, merges, rounds, log
+    return members, hist, nbrs, merges, rounds, log
+
+
+# REQ-024 (extension): geometric fallback for pairs the consensus could not decide (evidence < k_min)
+def _contact_fallback(store: SegmentStore, members: dict, hist: dict, nbrs: dict, p: ConsensusParams,
+                      num_classes: int, distrust: set[tuple[int, int]] | None,
+                      log: list[tuple[int, int, int, int, float]]) -> int:
+    counter = itertools.count(1)
+    version = {c: 0 for c in members}
+    pts: dict[int, np.ndarray] = {}
+    votes: dict[int, np.ndarray] = {}
+
+    def cluster_pts(c: int) -> np.ndarray:
+        if c not in pts:
+            pts[c] = np.concatenate([store.segments[i].points for i in members[c]]).astype(np.float64)
+        return pts[c]
+
+    def cluster_vote(c: int) -> np.ndarray:
+        if c not in votes:
+            votes[c] = np.sum([store.segments[i].label_scores(num_classes) for i in members[c]], axis=0)
+        return votes[c]
+
+    def labels_agree(a: int, b: int) -> bool:
+        va, vb = cluster_vote(a), cluster_vote(b)
+        if va.sum() <= 0 or vb.sum() <= 0:
+            return True
+        return int(np.argmax(va)) == int(np.argmax(vb))
+
+    def contact(a: int, b: int) -> float:
+        pa, pb = cluster_pts(a), cluster_pts(b)
+        small, big = (pa, pb) if (len(pa), a) <= (len(pb), b) else (pb, pa)
+        if len(big) > 5000:
+            big = big[:: -(-len(big) // 5000)]
+        d, _ = cKDTree(big).query(small, k=1, distance_upper_bound=p.near_dist)
+        return float(np.mean(np.isfinite(d)))
+
+    ev_cache: dict[tuple[int, int], tuple[int, int, PairEvidence]] = {}
+    ct_cache: dict[tuple[int, int], tuple[int, int, float]] = {}
+    total = 0
+    while True:
+        cands = []
+        for a in sorted(nbrs):
+            for b in nbrs[a]:
+                if b <= a:
+                    continue
+                hit = ev_cache.get((a, b))
+                if hit is None or hit[0] != version[a] or hit[1] != version[b]:
+                    hit = (version[a], version[b], pair_evidence(hist[a], hist[b], p, distrust))
+                    ev_cache[(a, b)] = hit
+                if hit[2].evidence >= p.k_min or not labels_agree(a, b):
+                    continue
+                ch = ct_cache.get((a, b))
+                if ch is None or ch[0] != version[a] or ch[1] != version[b]:
+                    ch = (version[a], version[b], contact(a, b))
+                    ct_cache[(a, b)] = ch
+                if ch[2] >= p.fallback_contact - _EPS:
+                    cands.append((-ch[2], a, b, hit[2]))
+        if not cands:
+            return total
+        cands.sort(key=lambda x: x[:3])
+        touched: set[int] = set()
+        for _, a, b, ev in cands:
+            if a in touched or b in touched:
+                continue
+            touched.update((a, b))
+            _merge_pair(a, b, members, hist, nbrs)
+            version[a] = next(counter)
+            pts.pop(a, None), pts.pop(b, None), votes.pop(a, None), votes.pop(b, None)
+            log.append((a, b, ev.support, ev.conflict, -1.0))
+            total += 1
 
 
 # REQ-024 (extension): background segments linked by voxel overlap of the smaller one
@@ -167,16 +245,29 @@ def consensus_cluster(store: SegmentStore, hists: dict[int, dict[int, FrameHist]
             continue
         (bg_ids if is_background_segment(seg, num_classes, params.background) else fg_ids).append(sid)
 
-    fg, hist, merges, rounds, log = _cluster_foreground(store, hists, fg_ids, params, None)
+    members, hist, nbrs, merges, rounds, log = _cluster_foreground(store, hists, fg_ids, params, None)
+    distrust = None
     if params.distrust_split_masks and fg_ids:
-        distrust = _distrust_set(hist, params)
+        distrust = _distrust_set(hist, params) or None
         if distrust:
-            fg, hist, merges, rounds, log = _cluster_foreground(store, hists, fg_ids, params, distrust)
+            members, hist, nbrs, merges, rounds, log = _cluster_foreground(store, hists, fg_ids, params,
+                                                                           distrust)
+    n_fallback = 0
+    if params.fallback == "contact" and fg_ids:
+        n_fallback = _contact_fallback(store, members, hist, nbrs, params, num_classes, distrust, log)
+    fg = [sorted(m) for m in members.values()]
     bg = _cluster_background(store, bg_ids, params) if bg_ids else []
 
     def order(cs: list[list[int]]) -> list[list[int]]:
         return sorted(cs, key=lambda c: (min(store.segments[i].t for i in c), min(c)))
 
-    fg, bg = order(fg), order(bg)
-    return ClusterResult(clusters=fg + bg, background=[False] * len(fg) + [True] * len(bg),
-                         merges=merges, rounds=rounds, pair_log=log)
+    kept_fg, kept_bg, dropped = [], [], []
+    for cs, kept in ((order(fg), kept_fg), (order(bg), kept_bg)):
+        for cl in cs:
+            if sum(store.segments[i].num_points for i in cl) < params.min_cluster_points:
+                dropped.append(cl)
+            else:
+                kept.append(cl)
+    return ClusterResult(clusters=kept_fg + kept_bg, background=[False] * len(kept_fg) + [True] * len(kept_bg),
+                         merges=merges, rounds=rounds, pair_log=log, dropped=dropped,
+                         fallback_merges=n_fallback)
