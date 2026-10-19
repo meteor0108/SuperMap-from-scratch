@@ -200,8 +200,8 @@ segmentation이 없는 프레임은 트랙 predict만 한다(D-085). mapping 프
 | `extrinsics.T_BC` | I_4 | body-카메라 extrinsic | D-009 |
 | `geometry.depth_min / depth_max` | 0.0 (초과) / null | 유효 depth 범위 | D-015 |
 | `geometry.dense_map.voxel_size` | 0.02 m | dense map 복셀, 복셀당 첫 점 유지 | D-016 |
-| `perception.prompts` | office 7개 (ScanNet 설정: 19개) | 라벨 집합 c | D-025, D-109 |
-| `perception.prompt_aliases` | {} (ScanNet 설정: cabinet, picture, bookshelf, refridgerator) | 검출 문구만 추가, 라벨은 클래스명 | D-115 |
+| `perception.prompts` | 23개 = ScanNet 19개 + office 4개 (plant, monitor, trash can, lamp) (ScanNet 평가 설정: 19개) | 라벨 집합 c | D-121, D-109 |
+| `perception.prompt_aliases` | cabinet, picture, bookshelf, refridgerator 별칭 (ScanNet 평가 설정과 동일) | 검출 문구만 추가, 라벨은 클래스명 | D-115 |
 | `perception.detector.model_id` | `IDEA-Research/grounding-dino-base` | 검출기 | D-114 (D-004는 tiny) |
 | `perception.detector.box_threshold` | 0.1 | = ByteTrack `low_thresh` | D-097 (D-020은 0.35) |
 | `perception.detector.nms_iou` | 0.5 | 클래스 무관 greedy NMS, D_high/D_low 분리 전 | D-116 (D-020 개정) |
@@ -275,11 +275,12 @@ segmentation이 없는 프레임은 트랙 predict만 한다(D-085). mapping 프
 SuperOdometry 없이 데이터셋 camera pose를 T_WB로 두고 T_BC = I로 합성합니다. 합성 코드는 `geometry/extrinsics.py` 한 곳입니다. 효과를 비교할 대안은 없습니다.
 ScanNet pose가 float32라 일부 pose가 SE(3) 허용오차 1e-6에 걸려 제외됩니다(2374프레임 중 3개, I-8-4, 평가 영향 없음).
 
-### 5.2 프롬프트와 별칭 (D-025, D-109, D-115)
+### 5.2 프롬프트와 별칭 (D-025, D-109, D-115, D-121)
 논문의 프롬프트 목록은 비공개입니다. ScanNet은 ScanNet20에서 otherfurniture를 뺀 19개(GT 철자 유지, `refridgerator`)를 쓰고 background = wall, floor입니다.
 GroundingDINO-base는 "cabinet"(최대 토큰 확률 0.31)과 "picture"(0.19)를 ByteTrack high 0.35 위로 올리지 않았고 "cupboard", "framed picture", "painting"에는 반응했습니다.
 그래서 `prompt_aliases`가 별칭을 검출 텍스트에만 넣고 라벨은 클래스명으로 붙입니다(C, Eq. 10 불변). 효과(별칭 전체): mIoU 48.8 → 54.8, mAP50 21.2 → 27.5, cabinet 0 → 33 IoU,
-picture 0 → 65. 대안: "office desk" 별칭은 desk 11 → 48이지만 table 39 → 25, bed 60 → 50이라 제외, "curtains"는 shower curtain을 먹어 제외. DualMap 부록 I의 GPT-4o 실내 어휘를 참고했습니다.
+picture 0 → 65. 대안: "office desk" 별칭은 desk 11 → 48이지만 table 39 → 25, bed 60 → 50이라 제외, "curtains"는 shower curtain을 먹어 제외. DualMap 부록 I의 GPT-4o 실내 어휘를 참고했습니다. \
+`configs/default.yaml`의 기본 목록은 처음에 office0 스모크용 7개(D-025)였는데, office0 전체 시퀀스에서 배경 단어가 없어 벽·창·러그가 table / plant로 붙었습니다. 그래서 기본값을 ScanNet 19개 + office 4개(plant, monitor, trash can, lamp)의 23개와 D-115 별칭으로 바꿨습니다(D-121). 평가 설정의 목록은 그대로입니다.
 
 ### 5.3 체크포인트 (D-114, D-004, D-005)
 처음엔 가장 단순한 tiny / small(D-004, D-005)이었고, 사람의 지시(논문 하드웨어 RTX 4090 Laptop 16 GB에 들어가는 가장 큰 모델)로 비교했습니다.

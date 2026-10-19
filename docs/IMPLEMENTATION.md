@@ -200,8 +200,8 @@ module rates**; everything else was chosen by us.
 | `extrinsics.T_BC` | I_4 | body-to-camera extrinsic | D-009 |
 | `geometry.depth_min / depth_max` | 0.0 (exclusive) / null | valid depth range | D-015 |
 | `geometry.dense_map.voxel_size` | 0.02 m | dense map voxel, first point per voxel kept | D-016 |
-| `perception.prompts` | 7 office classes (ScanNet config: 19) | label set c | D-025, D-109 |
-| `perception.prompt_aliases` | {} (ScanNet config: cabinet, picture, bookshelf, refridgerator) | extra detector phrases, labelled as the class | D-115 |
+| `perception.prompts` | 23 = the 19 ScanNet classes + 4 office classes (plant, monitor, trash can, lamp) (ScanNet eval config: 19) | label set c | D-121, D-109 |
+| `perception.prompt_aliases` | aliases for cabinet, picture, bookshelf, refridgerator (same as the ScanNet eval config) | extra detector phrases, labelled as the class | D-115 |
 | `perception.detector.model_id` | `IDEA-Research/grounding-dino-base` | detector | D-114 (D-004 was tiny) |
 | `perception.detector.box_threshold` | 0.1 | = ByteTrack `low_thresh` | D-097 (D-020 had 0.35) |
 | `perception.detector.nms_iou` | 0.5 | class-agnostic greedy NMS, before the D_high / D_low split | D-116 (revises D-020) |
@@ -275,11 +275,12 @@ Each topic gives the decision ID, the choice, the measured effect and the altern
 Without SuperOdometry, the dataset camera pose is T_WB and T_BC = I. The composition lives in one place, `geometry/extrinsics.py`. There is no alternative to compare.
 ScanNet poses are stored as float32, so a few poses fail the SE(3) tolerance of 1e-6 and are dropped (3 of 2374 frames, I-8-4, no effect on evaluation).
 
-### 5.2 Prompts and aliases (D-025, D-109, D-115)
+### 5.2 Prompts and aliases (D-025, D-109, D-115, D-121)
 The paper's prompt list is not public. ScanNet uses the 19 ScanNet20 classes minus otherfurniture (GT spelling kept, `refridgerator`), with background = wall, floor.
 GroundingDINO-base never raised "cabinet" (max token probability 0.31) or "picture" (0.19) above the ByteTrack high threshold 0.35, but fired on "cupboard", "framed picture" and "painting".
 `prompt_aliases` therefore puts aliases into the detector text only and labels the result as the class (C and Eq. 10 unchanged). Effect (all aliases): mIoU 48.8 -> 54.8, mAP50 21.2 -> 27.5, cabinet 0 -> 33 IoU,
-picture 0 -> 65. Alternatives: an "office desk" alias gives desk 11 -> 48 but table 39 -> 25 and bed 60 -> 50, so it was left out; "curtains" takes shower curtain, also left out. DualMap Appendix I (a GPT-4o indoor vocabulary) was consulted.
+picture 0 -> 65. Alternatives: an "office desk" alias gives desk 11 -> 48 but table 39 -> 25 and bed 60 -> 50, so it was left out; "curtains" takes shower curtain, also left out. DualMap Appendix I (a GPT-4o indoor vocabulary) was consulted. \
+The default list of `configs/default.yaml` started as the 7 office classes of the office0 smoke test (D-025); on the full office0 sequence, with no background word in the label set, walls, windows and the rug were labelled table / plant. The default is therefore now the 19 ScanNet classes plus 4 office classes (plant, monitor, trash can, lamp), 23 in all, with the D-115 aliases (D-121). The evaluation configs keep their own lists.
 
 ### 5.3 Checkpoints (D-114, D-004, D-005)
 The first choice was the simplest, tiny / small (D-004, D-005); on the human's instruction (the largest models that fit the paper's hardware, RTX 4090 Laptop 16 GB) they were compared.

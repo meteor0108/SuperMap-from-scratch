@@ -37,9 +37,11 @@ geometry:
 
 perception:
   # REQ-013: predefined object prompt list (Sec. VII Limitation, p.8-9); defines label set c (REQ-040).
-  # Paper list not published; office list per DATASETS.md sec. 4 (D-025).
-  prompts: [chair, table, sofa, plant, lamp, monitor, trash can]
-  prompt_aliases: {}  # REQ-013: extra detector phrases per class, labelled as that class (D-115 candidate); {} = none
+  # Paper list not published. ScanNet20 minus otherfurniture (D-109) + the office classes of the first
+  # development list (D-025), so walls / floors / windows have a label of their own (D-121).
+  prompts: [wall, floor, cabinet, bed, chair, sofa, table, door, window, bookshelf, picture, counter, desk, curtain, refridgerator, shower curtain, toilet, sink, bathtub, plant, monitor, trash can, lamp]
+  # REQ-013: extra detector phrases per class, labelled as that class (D-115); GroundingDINO-base does not fire on "cabinet" / "picture"
+  prompt_aliases: {cabinet: [cupboard, wardrobe, dresser], picture: [framed picture, picture frame, painting], bookshelf: [shelf], refridgerator: [refrigerator]}
   detector:
     # REQ-012: GroundingDINO [12] (Sec. IV-B p.4, Sec. V-B b) p.6); checkpoint D-004.
     model_id: IDEA-Research/grounding-dino-base   # D-114 (was tiny, D-004): +7.7 mIoU on 40 ScanNet scenes, fits the paper's 16 GB laptop GPU
