@@ -140,12 +140,12 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 subset 파일은 데이터셋, 장면, 프레임 범위를 고른다(`configs/subset_replica_office0.yaml`: Replica office0, 50 프레임). \
 이 50 프레임 subset은 파이프라인이 끝까지 도는지 보는 스모크 테스트용이다(약 10초 분량, 인스턴스 9개). \
-장면 전체를 돌리려면 `experiments/configs/full_office0_subset.yaml`(office0, 2000 프레임)을 쓴다. \
-다른 Replica 장면은 그 파일의 `scene:`만 바꾸고, ScanNet은 `experiments/configs/scannet_subset_template.yaml`을 복사해 장면 이름을 넣는다.
+장면 전체를 돌리려면 `configs/subset_replica_office0_full.yaml`(office0, 2000 프레임)을 쓴다. \
+다른 Replica 장면은 그 파일의 `scene:`만 바꾸고, ScanNet은 `configs/subset_scannet_template.yaml`을 복사해 장면 이름을 넣는다.
 
 ```bash
 .venv/bin/python -m supermap.run --config configs/default.yaml \
-  --subset experiments/configs/full_office0_subset.yaml --out outputs/office0_full
+  --subset configs/subset_replica_office0_full.yaml --out outputs/office0_full
 ```
 
 실행 시간(RTX PRO 6000, 기본 설정): Replica 장면 하나 2000 프레임에 약 2분, ScanNet 장면 하나(stride 3, 300~1500 프레임)에 0.5~4분. \

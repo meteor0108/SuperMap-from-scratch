@@ -138,12 +138,12 @@ Run one sequence:
 
 The subset file selects the dataset, scene and frame range (`configs/subset_replica_office0.yaml`: Replica office0, 50 frames). \
 That 50-frame subset is a smoke test that checks the pipeline runs end to end (about 10 s of video, 9 instances). \
-To run a whole scene use `experiments/configs/full_office0_subset.yaml` (office0, 2000 frames). \
-For another Replica scene change its `scene:`; for ScanNet copy `experiments/configs/scannet_subset_template.yaml` and fill in the scene name.
+To run a whole scene use `configs/subset_replica_office0_full.yaml` (office0, 2000 frames). \
+For another Replica scene change its `scene:`; for ScanNet copy `configs/subset_scannet_template.yaml` and fill in the scene name.
 
 ```bash
 .venv/bin/python -m supermap.run --config configs/default.yaml \
-  --subset experiments/configs/full_office0_subset.yaml --out outputs/office0_full
+  --subset configs/subset_replica_office0_full.yaml --out outputs/office0_full
 ```
 
 Runtime (RTX PRO 6000, default config): about 2 min for one 2000-frame Replica scene, 0.5-4 min for one ScanNet scene (stride 3, 300-1500 frames). \

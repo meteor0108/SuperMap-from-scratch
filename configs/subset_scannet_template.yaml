@@ -1,0 +1,9 @@
+# ScanNet subset template: copy and set the scene name.
+# 30 Hz capture, stride 3 -> 10 Hz pose stream (paper pose rate). max_frames: null = all frames.
+dataset: scannet
+root: data/scannet
+scene: scene0011_00
+start: 0
+max_frames: null
+stride: 3
+nominal_fps: 10

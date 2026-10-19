@@ -1,0 +1,8 @@
+# Full Replica office0 sequence for evaluation: all 2000 frames, stride 1.
+dataset: replica
+root: data/replica
+scene: office0
+start: 0
+max_frames: 2000
+stride: 1
+nominal_fps: 10
