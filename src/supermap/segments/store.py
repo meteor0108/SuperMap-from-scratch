@@ -133,11 +133,13 @@ class SegmentStore:
         st = cls()
         meta = json.loads((path / "meta.json").read_text())
         d = np.load(path / "segments.npz")
+        # read each array once: every NpzFile[] access decompresses the whole array again
+        points, colors = d["points"], d["colors"]
         off = 0
         for sid, t, n in zip(d["ids"], d["t"], d["counts"]):
             lab = [(int(z), float(s)) for z, s in meta["label_obs"][str(int(sid))]]
-            st.segments[int(sid)] = Segment(int(sid), int(t), d["points"][off:off + n],
-                                            d["colors"][off:off + n], lab)
+            st.segments[int(sid)] = Segment(int(sid), int(t), points[off:off + n].copy(),
+                                            colors[off:off + n].copy(), lab)
             off += int(n)
         st._next_id = int(meta["next_id"])
         for i in range(int(meta["num_keyframes"])):
