@@ -8,12 +8,16 @@ from supermap.map import ObjectInstance
 from supermap.segments.cluster import ClusterResult
 from supermap.segments.params import ConsensusParams
 from supermap.segments.store import SegmentStore
+from supermap.semantics.fusion import bayes_update, uniform_prior
 
 
 # REQ-023 (extension): one ObjectInstance per cluster; points voxel-deduplicated, label vote summed;
 # with params, points seen by fewer than min_point_support member segments are dropped (kept if too few remain)
 def clusters_to_instances(store: SegmentStore, result: ClusterResult, num_classes: int,
-                          voxel: float = 0.02, params: ConsensusParams | None = None) -> list[ObjectInstance]:
+                          voxel: float = 0.02, params: ConsensusParams | None = None,
+                          confusion: np.ndarray | None = None) -> list[ObjectInstance]:
+    """confusion (C, C): when given, label_probs follow Eq. (10) over the member observations
+    instead of the normalised score vote."""
     min_support = 1
     min_points = 0
     if params is not None:
@@ -38,9 +42,18 @@ def clusters_to_instances(store: SegmentStore, result: ClusterResult, num_classe
             _, first = np.unique(voxel_keys(pts, voxel), return_index=True)
             first.sort()
             pts, cols = pts[first], cols[first]
-        probs = np.sum([s.label_scores(num_classes) for s in segs], axis=0)
-        total = probs.sum()
-        probs = probs / total if total > 0 else np.full(num_classes, 1.0 / num_classes)
+        if confusion is not None:
+            # REQ-040 (extension): Eq. (10) over the member label observations in time order, as the
+            # paper's semantics layer does per detection; many consistent views saturate the belief
+            probs = uniform_prior(num_classes)
+            for s in sorted(segs, key=lambda s: s.t):
+                for z, _ in s.label_obs:
+                    if 0 <= z < num_classes:
+                        probs = bayes_update(probs, z, confusion)
+        else:
+            probs = np.sum([s.label_scores(num_classes) for s in segs], axis=0)
+            total = probs.sum()
+            probs = probs / total if total > 0 else np.full(num_classes, 1.0 / num_classes)
         out.append(ObjectInstance(id=idx, points=pts, colors=cols, log_odds=np.zeros(pts.shape[0]),
                                   label_probs=probs, first_seen=min(s.t for s in segs),
                                   last_seen=max(s.t for s in segs), exist_log_odds=0.0))
