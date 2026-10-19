@@ -27,6 +27,8 @@ from supermap.datasets import build_sequence  # noqa: E402
 from supermap.geometry.extrinsics import camera_pose_at  # noqa: E402
 
 REL_COLORS = {"on": "orange", "beside": "steelblue", "under": "purple"}
+# background classes start hidden (legend click shows them); they would cover the furniture
+HIDDEN_LABELS = {"wall", "floor", "ceiling"}
 # 12 edges of a box given corner indices (bit0=x, bit1=y, bit2=z)
 BOX_EDGES = [(0, 1), (2, 3), (4, 5), (6, 7), (0, 2), (1, 3), (4, 6), (5, 7), (0, 4), (1, 5), (2, 6), (3, 7)]
 
@@ -84,9 +86,10 @@ def instance_traces(pts: dict, graph: dict, max_pts: int) -> tuple[list[go.Scatt
         sel = sel[_sample(len(sel), max_pts)]
         drawn += len(sel)
         p = pts["object_points"][sel]
+        vis = "legendonly" if node["label"] in HIDDEN_LABELS else True
         traces.append(go.Scatter3d(x=p[:, 0], y=p[:, 1], z=p[:, 2], mode="markers", name=name,
                                    legendgroup=group, marker=dict(size=2.5, color=color),
-                                   hovertext=name, hoverinfo="text"))
+                                   hovertext=name, hoverinfo="text", visible=vis))
         lo, hi = np.asarray(node["bbox"], dtype=float)
         corners = np.array([[(hi if i >> a & 1 else lo)[a] for a in range(3)] for i in range(8)])
         seg = np.full((len(BOX_EDGES) * 3, 3), np.nan)
@@ -96,11 +99,11 @@ def instance_traces(pts: dict, graph: dict, max_pts: int) -> tuple[list[go.Scatt
                                    y=[None if np.isnan(v) else v for v in seg[:, 1]],
                                    z=[None if np.isnan(v) else v for v in seg[:, 2]],
                                    mode="lines", line=dict(color=color, width=3),
-                                   legendgroup=group, showlegend=False, hoverinfo="skip"))
+                                   legendgroup=group, showlegend=False, hoverinfo="skip", visible=vis))
         c = node["centroid"]
         traces.append(go.Scatter3d(x=[c[0]], y=[c[1]], z=[c[2]], mode="text", text=[text],
                                    textfont=dict(color=color), legendgroup=group,
-                                   showlegend=False, hoverinfo="skip"))
+                                   showlegend=False, hoverinfo="skip", visible=vis))
     known = {n["id"] for n in graph["nodes"]}
     rest = np.flatnonzero(~np.isin(ids, list(known)))
     if len(rest):

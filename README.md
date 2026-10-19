@@ -166,13 +166,13 @@ Turn an output folder into a single HTML file you can explore in a browser:
 .venv/bin/python scripts/visualize.py outputs/office0   # -> outputs/office0/viz.html
 ```
 
-It shows the dense map, per-instance points, boxes and labels, spatial (on/beside/under) and temporal edges, VLM waypoints, and the camera trajectory; each can be toggled in the legend. \
+It shows the dense map, per-instance points, boxes and labels, spatial (on/beside/under) and temporal edges, VLM waypoints, and the camera trajectory; each can be toggled in the legend (wall / floor / ceiling instances start hidden because they cover the furniture). \
 The file is self-contained and opens in any browser. The trajectory needs the subset file (`--subset`; defaults to `subset.yaml` in the output folder, else `configs/subset_replica_office0.yaml`). \
 `--png <path>` also saves a static image (needs `uv pip install kaleido` and `.venv/bin/plotly_get_chrome`).
 
 ![office0 full 2000-frame run](docs/images/office0_full_orbit.gif)
 
-The animation above is the full office0 run (2000 frames, 20 instances, 33 spatial and 48 temporal edges, 103 s): instance points and boxes, the camera trajectory colored by frame index, and the VLM waypoints (yellow diamonds) for "Where is the chair?". \
+The animation above is the full office0 run (2000 frames, 21 instances, 45 spatial and 59 temporal edges, 106 s): instance points and boxes, the camera trajectory colored by frame index, and the VLM waypoints (yellow diamonds) for "Where is the chair?". \
 Static image with the legend: [docs/images/office0_full_viz.png](docs/images/office0_full_viz.png).
 
 `configs/default.yaml` holds every parameter with a comment per key. \

@@ -10,6 +10,7 @@ Outputs in <dir> (world frame W, meters; t = stream index, D-008):
     graph.json        nodes, spatial edges E_s, temporal edges E_t, disappeared ids
     serialized.txt    schema + local subgraph + spatio-temporal cues (REQ-052..REQ-056)
     run_summary.json  frame counts, N_T, module run counts, VLM status
+    subset.yaml       copy of the subset file this run was started with
 """
 from __future__ import annotations
 
@@ -111,7 +112,9 @@ def run(config: str | Path, subset: str | Path, out: str | Path) -> dict:
     seq = build_sequence(ds_cfg, sub, base_dir=REPO_ROOT)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(subset, out / "subset.yaml")  # REQ-062: keep the subset used by this run next to its outputs
+    # REQ-062: keep the subset used by this run next to its outputs (skip when it already is that file)
+    if Path(subset).resolve() != (out / "subset.yaml").resolve():
+        shutil.copyfile(subset, out / "subset.yaml")
     pipe = SuperMapPipeline(cfg, pose_provider=seq.pose_provider, T_BC=seq.T_BC)
     print(f"dataset={name} scene={ds_cfg['scene']} frames={len(seq)} rates={pipe.scheduler.rates}", flush=True)
 

@@ -168,13 +168,13 @@ subset 파일은 데이터셋, 장면, 프레임 범위를 고른다(`configs/su
 .venv/bin/python scripts/visualize.py outputs/office0   # -> outputs/office0/viz.html
 ```
 
-dense map, 인스턴스별 점/박스/라벨, 공간 엣지(on/beside/under)와 시간 엣지, VLM 웨이포인트, 카메라 궤적을 보여 주며 범례에서 각각 켜고 끌 수 있다. \
+dense map, 인스턴스별 점/박스/라벨, 공간 엣지(on/beside/under)와 시간 엣지, VLM 웨이포인트, 카메라 궤적을 보여 주며 범례에서 각각 켜고 끌 수 있다(wall / floor / ceiling 인스턴스는 가구를 가리므로 처음엔 꺼져 있다). \
 파일 하나로 완결되어 어떤 브라우저에서도 열린다. 카메라 궤적에는 subset 파일이 필요하다(`--subset`, 기본값은 출력 폴더의 `subset.yaml`, 없으면 `configs/subset_replica_office0.yaml`). \
 `--png <path>`를 주면 정적 이미지도 저장한다(`uv pip install kaleido` 후 `.venv/bin/plotly_get_chrome` 필요).
 
 ![office0 전체 2000 프레임 실행 결과](docs/images/office0_full_orbit.gif)
 
-위 그림은 office0 2000 프레임 실행 결과(인스턴스 20개, 공간 엣지 33개, 시간 엣지 48개, 103초)로, 인스턴스 점과 박스, 프레임 순서로 색을 입힌 카메라 궤적, "Where is the chair?"에 대한 VLM 웨이포인트(노란 마름모)를 보여 준다. \
+위 그림은 office0 2000 프레임 실행 결과(인스턴스 21개, 공간 엣지 45개, 시간 엣지 59개, 106초)로, 인스턴스 점과 박스, 프레임 순서로 색을 입힌 카메라 궤적, "Where is the chair?"에 대한 VLM 웨이포인트(노란 마름모)를 보여 준다. \
 범례가 있는 정지 이미지: [docs/images/office0_full_viz.png](docs/images/office0_full_viz.png).
 
 `configs/default.yaml`에 모든 파라미터가 키마다 주석과 함께 들어 있다. \
