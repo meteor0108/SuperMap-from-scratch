@@ -21,6 +21,7 @@ class ConsensusParams:
     fallback: str = "contact"      # tier after the theta schedule for undecided pairs: "none" | "contact"
     fallback_contact: float = 0.5  # share of the smaller cluster's points within near_dist of the larger
     min_cluster_points: int = 50   # clusters with fewer points are dropped from the result
+    min_point_support: int = 2     # keep points whose voxel is seen by >= k distinct member segments (1 = off)
 
     def __post_init__(self) -> None:
         if self.fallback not in ("none", "contact"):
