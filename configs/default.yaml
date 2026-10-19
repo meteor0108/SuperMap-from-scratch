@@ -137,6 +137,7 @@ tracking:
     edge_rel: 0.0         # REQ-023: same, relative to the pixel depth (fraction); the larger of the two thresholds applies; 0 = off
     edge_radius: 1        # REQ-023: window radius in pixels for the depth-edge test
     resolve_overlaps: smaller  # REQ-014/REQ-023: pixel shared by several masks goes to the smaller mask (D-107); null disables
+    overlap_background: []  # REQ-023: class phrases whose masks win shared pixels before the smaller-wins rule; [] = off (D-122: evaluated, not adopted; [wall, floor] gave -1.7 mIoU on the 8 screening scenes)
     component_voxel: null  # REQ-023: per-observation largest-component filter grid (m); null = off (evaluated in iter 15, not adopted: D-118)
   merge:
     # REQ-024: ObjMerge/MapMerge point de-duplication voxel (m), = dense map voxel (D-016); null = plain concatenation (D-037, default 0.02 per D-101)

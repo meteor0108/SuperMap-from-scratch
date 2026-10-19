@@ -141,6 +141,9 @@ class SuperMapPipeline:
         if ucfg.get("component_voxel") is not None:  # REQ-023: iter-15 switch, key present only when on
             self.unproject_cfg["component_voxel"] = float(ucfg["component_voxel"])
         self.resolve_overlaps = ucfg.get("resolve_overlaps")
+        # REQ-023: classes whose masks win shared pixels before smaller-wins (D-122); unknown names skipped
+        self.overlap_background = [self.prompts.index(p) for p in ucfg.get("overlap_background", [])
+                                   if " ".join(str(p).strip().lower().split()) in self.prompts.phrases]
         self.merge_voxel = tcfg["merge"]["voxel_size"]
         cv = tcfg["merge"].get("component_voxel")  # REQ-024: iter-15 instance-level largest-component pruning; None = off
         self.merge_component_voxel = None if cv is None else float(cv)
@@ -272,7 +275,9 @@ class SuperMapPipeline:
         labels = {td.track_id: td.label for td in t_trk}
         scores = {td.track_id: td.score for td in t_trk}
         # REQ-023: Unproject with mask erosion / depth outlier removal (D-106) after overlap resolution (D-107)
-        masks = resolve_mask_overlaps(masks, self.resolve_overlaps)
+        # REQ-023: background masks win shared pixels (D-122), then smaller-wins among the rest (D-107)
+        masks = resolve_mask_overlaps(masks, self.resolve_overlaps, labels=labels,
+                                      background=self.overlap_background)
         o_add = unproject_masks(obs, masks, labels, scores, self.depth_min, self.depth_max, self.min_points,
                                 **self.unproject_cfg)
         res.o_add_ids = _ids(o_add)

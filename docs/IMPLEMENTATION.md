@@ -356,6 +356,8 @@ The code remains and is off by default. Each row carries the number that rejecte
 
 | Attempt | Rejecting number | Note |
 |---|---|---|
+| Background-first mask overlap `overlap_background: [wall, floor]` (iter 16, D-122) | office0 unchanged (no wall / floor track in the affected frames), 8 scenes mIoU 58.6 -> 56.9 | Background masks also take furniture edge pixels. Kept as an off switch |
+| New-track threshold 0.42 / 0.5 (iter 16, D-123) | office0 looks better (furniture points on background 38 % -> 12 / 7 %) but **40 scenes, 0.42: mIoU 59.9 -> 59.4, mAP50 43.5 -> 42.3, with-bg Acc 64.1 -> 58.5** (13 scenes better / 20 worse) | Loses objects whose first detections are weak (bed, bookshelf, picture) and the wall / floor instances. Confirms the iter-8 result |
 | Segmentation rate 3 / 10 Hz (iter 15, D-119) | mIoU on the 8 chair-heavy scenes 51.7 -> 24.5 / 19.5 | The Eq. (8) and D-113 updates are applied per segmentation event, so the map collapses. The paper's 1 Hz stays |
 | ByteTrack thresholds / buffer / p_min / min_points (iter 8, 11 runs) | On 8 scenes bt 0.4 / 0.5 gave +3.4 mIoU, mAP50 11.3 -> 16.1, instances 125 -> 52, but on **the 40 scenes -1.0 mIoU, -1.3 mAP50** (only 17 scenes better) | The 8 scenes are not representative, so defaults are decided on the 40 scenes only. Higher thresholds only block tracks of low-score large structures (wall, cabinet, desk) |
 | SAM2.1-large (D-114) | 41.6 alone, -1.9 next to base | The detector is the bottleneck |
