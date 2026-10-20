@@ -208,7 +208,9 @@ def cluster(a):
     t1 = time.time()
     res = consensus_cluster(store, hists, params, num_classes=C)
     t2 = time.time()
-    objs = clusters_to_instances(store, res, C, params.voxel, params)
+    from supermap.semantics import confusion_from_config
+    confusion = confusion_from_config(cfg["semantics"]["confusion"], C)  # Eq. (10) labels (D-125)
+    objs = clusters_to_instances(store, res, C, params.voxel, params, confusion=confusion)
     t3 = time.time()
 
     out = Path(a.out)

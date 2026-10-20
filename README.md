@@ -127,6 +127,11 @@ The front end (detection, NMS, SAM2, mask clean-up, back-projection) and the eva
 Per scene: mIoU better in 24 / worse in 12, mAP50 better in 25 / worse in 13. A one-at-a-time sweep of 15 settings stays within +-1 on every metric, so the remaining gap is structural. \
 Known limits: large objects split by partial masks that create conflicts, ghost points outside the room (both modes), and the confirmation delay while segments wait for evidence (expected to affect online use and change detection).
 
+![ScanNet scene0378_00: GT / paper mode / extension mode](docs/images/scannet_scene0378_gt_paper_segments.png)
+
+Top view of ScanNet scene0378_00: GT on the left (only the 13 objects of the evaluated classes are coloured), the paper mode in the middle (34 instances), the extension mode on the right (24). Same colour = same instance. \
+The paper mode splits two bookshelves into 9 instances and one window into 6, and labels a wall as table; the extension mode brings them down to 3 and 3 and picks up the desk and the door. The tool that made this figure is not part of the repository (local analysis only).
+
 ## Installation
 
 The environment uses uv with Python 3.11 and torch cu128 (an sm_120 GPU needs torch 2.7 or newer). \
