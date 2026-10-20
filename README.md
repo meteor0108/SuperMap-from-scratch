@@ -17,14 +17,15 @@ How it was built (implementation details, parameters, experiments and the reason
 1. [Algorithm](#algorithm)
 2. [Results vs. the paper](#results-vs-the-paper)
 3. [Differences from the paper](#differences-from-the-paper)
-4. [Installation](#installation)
-5. [Usage](#usage)
-6. [Repository layout](#repository-layout)
-7. [Documentation](#documentation)
-8. [Citation](#citation)
-9. [Acknowledgements](#acknowledgements)
-10. [License](#license)
-11. [TODO](#todo)
+4. [Extension mode: segment-based instances (not in the paper)](#extension-mode-segment-based-instances-not-in-the-paper)
+5. [Installation](#installation)
+6. [Usage](#usage)
+7. [Repository layout](#repository-layout)
+8. [Documentation](#documentation)
+9. [Citation](#citation)
+10. [Acknowledgements](#acknowledgements)
+11. [License](#license)
+12. [TODO](#todo)
 
 ## Algorithm
 
@@ -102,6 +103,29 @@ The GPU is stronger than the paper's, so these latencies are optimistic.
 - **Details the paper leaves open** and this implementation fills in: class-agnostic NMS on detector boxes; depth-edge and depth-outlier filters and mask erosion before lifting; absorbing a new track whose points lie inside an existing instance; a class-aware first association; keeping the largest connected component of an instance after a merge; object-level existence log-odds with removal; and every numeric threshold (Eq. 8, 9, 10 probabilities, scene-graph gamma and delta, ByteTrack thresholds). \
   The measurements behind each choice are in [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md).
 - **Evaluation.** ScanNet and synthetic change sequences replace the paper's robot experiments; there is no real-robot or navigation stack.
+
+## Extension mode: segment-based instances (not in the paper)
+
+> **This section describes a method that is not in the paper.** The default is the paper pipeline above; this mode is an opt-in addition from Phase B (performance / efficiency study).
+
+The paper's instance layer uses the 2D track id as the instance id, so a lost track splits one object into several instances and a single ID switch mixes neighbours (46 active instances per scene vs 15 GT). \
+The extension keeps every lifted mask as a **segment** and defines an instance as a cluster of segments decided by **multi-view consensus** (the view consensus of MaskClustering, CVPR 2024, extended with support / conflict counters for online use). \
+For every frame in which two segments are both visible, landing in the same mask counts as support and in different masks as conflict; a merge needs at least 3 pieces of evidence and a consensus ratio >= theta (0.95 -> 0.85), re-evaluated at cluster level. \
+Leftover fragments are attached by contact + label agreement, only points seen by >= 2 member segments are kept (removes single-frame mask bleed), and labels are fused with Eq. (10). \
+Code: `src/supermap/segments/`; design and experiment log: [docs/SEGMENTS.ko.md](docs/SEGMENTS.ko.md) (Korean); decisions D-124 / D-125.
+
+**This is an offline upper-bound study so far.** All keyframes are collected first and clustered once (`scripts/segments_offline.py`, extract -> cluster); real-time processing, change detection and the 4D graph are not supported yet. \
+The front end (detection, NMS, SAM2, mask clean-up, back-projection) and the evaluation protocol are those of the paper mode. ScanNet v2 validation, 40 scenes, r = 0.05 m:
+
+| | mIoU | f-mIoU | Acc | mAP25 | mAP50 | instances / scene |
+|---|---|---|---|---|---|---|
+| paper mode (default), without background | 59.4 | 59.9 | 62.8 | 61.3 | 42.9 | 46.3 |
+| **segment mode (offline), without background** | **63.4** | **64.0** | **66.0** | **66.4** | **48.2** | **40.7** |
+| paper mode, with background | 55.6 | 59.0 | 64.0 | | | |
+| segment mode, with background | 58.6 | 60.0 | 63.8 | | | |
+
+Per scene: mIoU better in 24 / worse in 12, mAP50 better in 25 / worse in 13. A one-at-a-time sweep of 15 settings stays within +-1 on every metric, so the remaining gap is structural. \
+Known limits: large objects split by partial masks that create conflicts, ghost points outside the room (both modes), and the confirmation delay while segments wait for evidence (expected to affect online use and change detection).
 
 ## Installation
 
@@ -191,6 +215,7 @@ src/supermap/
   semantics/      Eq. 10 label fusion
   graph/          clustering, predicates, temporal edges, serialization
   vlm/            Gemini backend, <answer> parser, waypoints
+  segments/       extension mode (not in the paper): segment store, multi-view consensus, clustering
   pipeline.py     per-frame processing order (Alg. 1)
   scheduler.py    asynchronous module rates
   run.py          entry point (python -m supermap.run)
@@ -285,7 +310,7 @@ The SuperMap algorithm and paper belong to their authors; this license covers on
 
 Where the implementation still falls short of the paper, and what was left out of scope. The numbers and diagnoses behind each item are in [docs/IMPLEMENTATION.md, section 9](docs/IMPLEMENTATION.md#9-known-limitations-and-open-issues).
 
-- [ ] **Instance over-segmentation and mixing.** 46 active instances per ScanNet scene vs 15 GT objects; on office0 two sofas end up as three instances and one table as two. \
+- [ ] **Instance over-segmentation and mixing.** (mitigated offline by the extension mode, [section above](#extension-mode-segment-based-instances-not-in-the-paper); online use still open) 46 active instances per ScanNet scene vs 15 GT objects; on office0 two sofas end up as three instances and one table as two. \
   The instance id is the 2D track id, so a lost track opens a new id, and re-activation (Eq. 5) and absorption (D-111) only work on sides already seen. Adjacent objects of the same class get mixed by a single detection box or an ID switch. There is no step that re-merges or splits instances in 3D.
 - [ ] **Background leaking into furniture labels.** On office0 a wall plus rug becomes "table" and the blinds become "door". Needs mask clean-up or explicit background handling.
 - [ ] **Lost desk class.** The class-agnostic NMS (D-116) suppresses the "desk" box behind the "table" box of the same object, so desk AP50 is 0 (I-14-2).
