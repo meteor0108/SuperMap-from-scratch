@@ -15,21 +15,31 @@ from supermap.semantics.fusion import bayes_update, uniform_prior
 # with params, points seen by fewer than min_point_support member segments are dropped (kept if too few remain)
 def clusters_to_instances(store: SegmentStore, result: ClusterResult, num_classes: int,
                           voxel: float = 0.02, params: ConsensusParams | None = None,
-                          confusion: np.ndarray | None = None) -> list[ObjectInstance]:
+                          confusion: np.ndarray | None = None,
+                          point_evidence: dict | None = None) -> list[ObjectInstance]:
     """confusion (C, C): when given, label_probs follow Eq. (10) over the member observations
     instead of the normalised score vote."""
     min_support = 1
     min_points = 0
+    ghost = 0
     if params is not None:
         voxel, min_support, min_points = params.voxel, params.min_point_support, params.min_cluster_points
+        ghost = params.ghost_free_min if point_evidence is not None else 0
     out: list[ObjectInstance] = []
     for idx, members in enumerate(result.clusters):
         segs = [store.segments[i] for i in members]
         pts = np.concatenate([s.points for s in segs]).astype(np.float64)
         cols = np.concatenate([s.colors for s in segs])
+        seg_of = np.repeat(np.arange(len(segs)), [s.num_points for s in segs])
+        if ghost > 0 and pts.shape[0]:
+            # free-space test per lifted point; kept as is when too few points would survive
+            conf = np.concatenate([point_evidence[i][0] for i in members])
+            free = np.concatenate([point_evidence[i][1] for i in members])
+            keep = ~((free >= ghost) & (conf <= params.ghost_confirmed_max))
+            if keep.sum() >= min_points:
+                pts, cols, seg_of = pts[keep], cols[keep], seg_of[keep]
         if min_support > 1 and len(segs) >= min_support and pts.shape[0]:
             # support of a voxel = number of distinct member segments occupying it
-            seg_of = np.repeat(np.arange(len(segs)), [s.num_points for s in segs])
             keys = voxel_keys(pts, voxel)
             uniq_pairs = np.unique(np.stack([keys, seg_of], axis=1), axis=0)
             _, inv_pair = np.unique(uniq_pairs[:, 0], return_inverse=True)

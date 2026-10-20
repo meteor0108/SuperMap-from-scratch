@@ -62,6 +62,9 @@ def pair_evidence(hist_a: dict[int, FrameHist], hist_b: dict[int, FrameHist], p:
         if ma == mb:
             if distrust is None or (f, ma) not in distrust:
                 ev.support += 1
+        elif p.partial_share > 0 and (ha.counts.get(mb, 0) >= p.partial_share * hb.n_vis
+                                      or hb.counts.get(ma, 0) >= p.partial_share * ha.n_vis):
+            continue    # one is a part of the other: neither support nor conflict
         else:
             ev.conflict += 1
     return ev

@@ -21,6 +21,10 @@ class ConsensusParams:
     fallback: str = "contact"      # tier after the theta schedule for undecided pairs: "none" | "contact"
     fallback_contact: float = 0.5  # share of the smaller cluster's points within near_dist of the larger
     min_cluster_points: int = 50   # clusters with fewer points are dropped from the result
+    partial_share: float = 0.0     # >0: a frame where one cluster fills the other's mask is no conflict (0 = off)
+    ghost_free_min: int = 0        # >0: drop points seen in free space by >= this many keyframes (0 = off)
+    ghost_confirmed_max: int = 1   # ... and confirmed by at most this many keyframes
+    ghost_tau: float = 0.2         # measured surface behind the point by more than this = free space (m)
     min_point_support: int = 2     # keep points whose voxel is seen by >= k distinct member segments (1 = off)
 
     def __post_init__(self) -> None:
